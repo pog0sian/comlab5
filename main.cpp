@@ -21,7 +21,7 @@ public:
 
     CA() : m_cRef(0) {}
 
-    ~CA() { std::cout << "CA: destroed..." << std::endl; };
+    ~CA() { std::cout << "CA: destroyed..." << std::endl; };
 
     virtual ULONG __stdcall AddRef() {
         std::cout << "CA: AddRef = " << m_cRef + 1 << std::endl;
@@ -78,7 +78,12 @@ BOOL SameComponents(IX* pIX, IY* pIY) {
 
     pIY->QueryInterface(IID_IUnknown1, (void**)&pI2);
 
-    return pI1 == pI2;
+    BOOL result = (pI1 == pI2);
+
+    pI1->Release();
+    pI2->Release();
+
+    return result;
 }
 
 void f(IX* pIX) {
@@ -87,6 +92,7 @@ void f(IX* pIX) {
     HRESULT hr = pIX->QueryInterface(IID_IX, (void**)&pIX2);
 
     assert(SUCCEEDED(hr));
+    if (pIX2) pIX2->Release();
 }
 
 void f2(IX* pIX) {
@@ -101,6 +107,8 @@ void f2(IX* pIX) {
         hr = pIY->QueryInterface(IID_IX, (void**)&pIX2);
 
         assert(SUCCEEDED(hr));
+        if (pIX2) pIX2->Release();
+        pIY->Release();
     }
 }
 
@@ -117,10 +125,15 @@ void f3(IX* pIX) {
         hr = pIY->QueryInterface(IID_IZ, (void**)&pIZ);
 
         if (SUCCEEDED(hr)) {
+            pIZ->Release();
+
             hr = pIX->QueryInterface(IID_IZ, (void**)&pIZ);
 
-            assert(SUCCEEDED(hr));
+            if (SUCCEEDED(hr)) {
+                pIZ->Release();
+            }
         }
+        pIY->Release();
     }
 }
 
@@ -139,7 +152,6 @@ int main() {
     if (SUCCEEDED(hr)) {
         std::cout << "Client: IX received successfully" << std::endl;
         pIX->Fx();
-        pIX->Release();
     }
 
     std::cout << "\nClient: get pointer to IY" << std::endl;
@@ -148,7 +160,6 @@ int main() {
     if (SUCCEEDED(hr)) {
         std::cout << "Client: IY received successfully" << std::endl;
         pIY->Fy();
-        pIY->Release();
     }
 
     std::cout << "\nClient: Get unsupported interface" << std::endl;
@@ -179,15 +190,15 @@ int main() {
         std::cout << "Two pointers are equal?" << std::endl;
         if (pIUnknownFromIY == pIUnknown) {
             std::cout << "YES" << std::endl;
-            pIUnknownFromIY->Release();
         } else {
             std::cout << "NO" << std::endl;
         }
+        pIUnknownFromIY->Release();
     }
 
     std::cout << "\nTest f()" << std::endl;
     try {
-        f(pIX);
+        if (pIX) f(pIX);
         std::cout << "f() successfully completed" << std::endl;
     }
     catch (...) {
@@ -196,7 +207,7 @@ int main() {
 
     std::cout << "\nTest f2()" << std::endl;
     try {
-        f2(pIX);
+        if (pIX) f2(pIX);
         std::cout << "f2() successfully completed" << std::endl;
     }
     catch (...) {
@@ -205,7 +216,7 @@ int main() {
 
     std::cout << "\nTest f3()" << std::endl;
     try {
-        f3(pIX);
+        if (pIX) f3(pIX);
         std::cout << "f3() successfully completed" << std::endl;
     }
     catch (...) {
@@ -219,7 +230,7 @@ int main() {
     if (pIX != NULL) pIX->Release();
     if (pIY != NULL) pIY->Release();
 
-    delete pIUnknown;
+    pIUnknown->Release();
 
     return 0;
 }
